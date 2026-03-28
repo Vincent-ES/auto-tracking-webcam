@@ -1,25 +1,27 @@
 import cv2 as cv
+import mediapipe as mp
 
-cap = cv.VideoCapture(0)
-haar_cascade = cv.CascadeClassifier('auto-tracking-webcam/haar_face.xml')
+class FaceDetector:
+    def __init__(self, model_selection = 1, min_detection_confidence = 0.5):
+        self.mp_face_detection = mp.solutions.face_detection
+        self.detector = self.mp_face_detection.FaceDetection(
+            model_selection = model_selection,
+            min_detection_confidence = min_detection_confidence
+        )
 
+    def find_face(self, frame):
+        frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        result = self.detector.process(frame_rgb)
 
-while True:
-    isTrue, frame = cap.read()
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    gray_blur = cv.GaussianBlur(gray, (7,7), 0)
+        error_x = 0
+        face_found = False
 
-    if not isTrue:
-        break
+        if result.detections:
+            face_found = True
+            detection = result.detections[0]
+            bbox = detection.location_data.relative_bounding_box
 
-    faces_rect = haar_cascade.detectMultiScale(gray_blur, scaleFactor=1.1, minNeighbors=4)
-    for (x, y, w, h) in faces_rect:
-        cv.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), thickness=2)
+            face_center_x = bbox.xmin + (bbox.width / 2)
+            error_x = face_center_x - 0.5
 
-    cv.imshow('webcam', frame)
-
-    if cv.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv.destroyAllWindows()
+        return face_found, error_x
